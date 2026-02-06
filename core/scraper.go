@@ -5,11 +5,7 @@ import (
 )
 
 func RunScraper() {
+	// 确保这里至少用了一次 log，否则就把上面的 import "log" 删掉
 	log.Println(">>> 启动自动化任务轮询...")
-	
-	// 1. 运行监控
 	MonitorResources()
-	
-	// 2. 这里可以添加具体的抓取逻辑
-	log.Println(">>> 任务轮询结束")
 }

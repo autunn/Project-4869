@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-	"log"
 	"net/http"
 	"project-4869/core"
 	"project-4869/db"
@@ -29,7 +28,7 @@ func main() {
 		c.HTML(http.StatusOK, "index.html", nil)
 	})
 
-	// 实时日志通道 (SSE) - 已修正 io.Writer 类型
+	// 实时日志流 (SSE)
 	r.GET("/api/logs", func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")

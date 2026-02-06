@@ -1,8 +1,10 @@
 package core
 
-import "log"
+import (
+	"log"
+)
 
-func TriggerCD2Download(url string, token string) {
-	AddLog("CD2 推送: 任务已成功提交至 CloudDrive2")
-	log.Printf("CD2 Action: %s", url)
+func TriggerCD2(url string, token string) {
+	AddLog("准备推送至 CD2...")
+	log.Printf("推送 URL: %s, Token: %s", url, token)
 }

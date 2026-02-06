@@ -18,7 +18,7 @@ func InitDB() {
 	var err error
 	DB, err = gorm.Open(sqlite.Open("data/p4869.db"), &gorm.Config{})
 	if err != nil {
-		log.Fatal("DB Init Error")
+		log.Fatalf("数据库初始化失败: %v", err)
 	}
 	DB.AutoMigrate(&SystemConfig{})
 }

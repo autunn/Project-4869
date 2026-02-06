@@ -1,9 +1,12 @@
 package main
 
 import (
+	"io"
 	"log"
+	"net/http"
 	"project-4869/core"
 	"project-4869/db"
+
 	"github.com/gin-gonic/gin"
 	"github.com/robfig/cron/v3"
 )
@@ -11,10 +14,9 @@ import (
 func main() {
 	db.InitDB()
 
-	// 启动定时任务
 	c := cron.New(cron.WithSeconds())
 	c.AddFunc("0 0 * * * *", func() {
-		core.AddLog("系统提示: 触发定时抓取任务")
+		core.AddLog("系统消息: 定时任务触发")
 		core.RunScraper()
 	})
 	c.Start()
@@ -24,18 +26,18 @@ func main() {
 	r.LoadHTMLGlob("static/*")
 
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(200, "index.html", nil)
+		c.HTML(http.StatusOK, "index.html", nil)
 	})
 
-	// 实时日志流 (SSE)
+	// 实时日志通道 (SSE) - 已修正 io.Writer 类型
 	r.GET("/api/logs", func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
 		
-		msgChan := core.GetLogChan()
-		c.Stream(func(w interface{}) bool {
-			if msg, ok := <-msgChan; ok {
+		ch := core.GetLogChan()
+		c.Stream(func(w io.Writer) bool {
+			if msg, ok := <-ch; ok {
 				c.SSEvent("message", msg)
 				return true
 			}
@@ -43,16 +45,15 @@ func main() {
 		})
 	})
 
-	// 保存配置
 	r.POST("/api/config", func(c *gin.Context) {
-		var config db.SystemConfig
-		if err := c.ShouldBindJSON(&config); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+		var cfg db.SystemConfig
+		if err := c.ShouldBindJSON(&cfg); err != nil {
+			c.JSON(400, gin.H{"status": "error"})
 			return
 		}
-		db.SaveConfig(config)
-		core.AddLog("系统提示: 配置已更新")
-		c.JSON(200, gin.H{"message": "保存成功"})
+		db.SaveConfig(cfg)
+		core.AddLog("系统消息: 配置已成功保存")
+		c.JSON(200, gin.H{"status": "ok"})
 	})
 
 	r.POST("/api/run", func(c *gin.Context) {
@@ -60,6 +61,5 @@ func main() {
 		c.JSON(200, gin.H{"message": "任务已启动"})
 	})
 
-	log.Println("Project 4869 运行在 http://localhost:4869")
 	r.Run(":4869")
 }

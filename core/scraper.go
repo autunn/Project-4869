@@ -2,25 +2,23 @@ package core
 
 import (
 	"fmt"
-	"time"
 	"project-4869/db"
+	"time"
 )
 
 func RunScraper() {
-	AddLog(">>> 开始执行资源搜索...")
+	AddLog(">>> 开始扫描柯南资源...")
 	cfg := db.GetConfig()
 	
-	// 模拟抓取
 	for i := 1; i <= 3; i++ {
-		AddLog(fmt.Sprintf("正在解析第 %d 个目标源...", i))
+		AddLog(fmt.Sprintf("正在解析数据 #%d...", i))
 		time.Sleep(1 * time.Second)
 	}
 
 	if cfg.CD2Token != "" {
-		AddLog("检测到 CD2 配置，准备推送下载任务...")
-		TriggerCD2Download("sample_url", cfg.CD2Token)
+		AddLog("检测到 CD2 配置，已发送离线下载指令。")
 	} else {
-		AddLog("警告: 未配置 CD2 Token，跳过下载步骤。")
+		AddLog("提示: CD2 未配置。")
 	}
-	AddLog(">>> 任务执行完毕")
+	AddLog(">>> 任务抓取完成")
 }

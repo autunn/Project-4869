@@ -1,13 +1,13 @@
 package db
 
 func SaveConfig(cfg SystemConfig) {
-	var exist SystemConfig
-	DB.First(&exist, 1)
-	if exist.ID == 0 {
+	var current SystemConfig
+	DB.First(&current, 1)
+	if current.ID == 0 {
 		cfg.ID = 1
 		DB.Create(&cfg)
 	} else {
-		DB.Model(&exist).Updates(cfg)
+		DB.Model(&current).Updates(cfg)
 	}
 }
 

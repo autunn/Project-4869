@@ -10,18 +10,18 @@ import (
 )
 
 func main() {
-	// 1. 初始化数据库
 	db.InitDB()
 
-	// 2. 启动定时任务
 	c := cron.New(cron.WithSeconds())
-	c.AddFunc("0 0 * * * *", func() {
+	_, err := c.AddFunc("0 0 * * * *", func() {
 		log.Println("执行定时抓取任务...")
 		core.RunScraper()
 	})
+	if err != nil {
+		log.Fatalf("Cron 任务添加失败: %v", err)
+	}
 	c.Start()
 
-	// 3. 设置路由
 	r := gin.Default()
 	r.Static("/static", "./static")
 	r.LoadHTMLGlob("static/*")
@@ -30,12 +30,13 @@ func main() {
 		c.HTML(200, "index.html", gin.H{"title": "Project 4869"})
 	})
 
-	// 接口示例
 	r.POST("/api/run", func(c *gin.Context) {
 		go core.RunScraper()
 		c.JSON(200, gin.H{"message": "任务已启动"})
 	})
 
 	log.Println("服务启动在 http://localhost:4869")
-	r.Run(":4869")
+	if err := r.Run(":4869"); err != nil {
+		log.Fatal("服务运行失败: ", err)
+	}
 }

@@ -2,11 +2,9 @@ package core
 
 import (
 	"log"
-	"net/http"
 )
 
-// TriggerCD2Download 触发离线下载
 func TriggerCD2Download(url string, token string) {
-	log.Printf("通知 CloudDrive2 下载: %s", url)
-	// 这里实现具体的 API 调用
+	log.Printf("准备通知 CD2 下载资源，URL: %s", url)
+	// 具体的 http 请求逻辑暂未启用，因此不引用 net/http
 }

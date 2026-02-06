@@ -2,9 +2,9 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"project-4869/core"
 	"project-4869/db"
-
 	"github.com/gin-gonic/gin"
 	"github.com/robfig/cron/v3"
 )
@@ -12,14 +12,12 @@ import (
 func main() {
 	db.InitDB()
 
+	// 定时任务
 	c := cron.New(cron.WithSeconds())
-	_, err := c.AddFunc("0 0 * * * *", func() {
-		log.Println("执行定时抓取任务...")
+	c.AddFunc("0 0 * * * *", func() {
+		core.AddLog("系统提示: 触发定时抓取任务")
 		core.RunScraper()
 	})
-	if err != nil {
-		log.Fatalf("Cron 任务添加失败: %v", err)
-	}
 	c.Start()
 
 	r := gin.Default()
@@ -27,16 +25,42 @@ func main() {
 	r.LoadHTMLGlob("static/*")
 
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(200, "index.html", gin.H{"title": "Project 4869"})
+		c.HTML(200, "index.html", nil)
+	})
+
+	// 获取实时日志 (Server-Sent Events)
+	r.GET("/api/logs", func(c *gin.Context) {
+		c.Header("Content-Type", "text/event-stream")
+		c.Header("Cache-Control", "no-cache")
+		c.Header("Connection", "keep-alive")
+		
+		msgChan := core.GetLogChan()
+		c.Stream(func(w interface{}) bool {
+			if msg, ok := <-msgChan; ok {
+				c.SSEvent("message", msg)
+				return true
+			}
+			return false
+		})
+	})
+
+	// 保存配置
+	r.POST("/api/config", func(c *gin.Context) {
+		var config db.SystemConfig
+		if err := c.ShouldBindJSON(&config); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+		db.SaveConfig(config)
+		core.AddLog("系统提示: 配置已更新")
+		c.JSON(200, gin.H{"message": "配置保存成功"})
 	})
 
 	r.POST("/api/run", func(c *gin.Context) {
 		go core.RunScraper()
-		c.JSON(200, gin.H{"message": "任务已启动"})
+		c.JSON(200, gin.H{"message": "任务已在后台启动"})
 	})
 
-	log.Println("服务启动在 http://localhost:4869")
-	if err := r.Run(":4869"); err != nil {
-		log.Fatal("服务运行失败: ", err)
-	}
+	log.Println("Project 4869 启动在 http://localhost:4869")
+	r.Run(":4869")
 }

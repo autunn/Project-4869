@@ -2,32 +2,46 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Project 4869 Panel</title>
+    <title>Project 4869 PT Manager</title>
     <style>
-        body { font-family: sans-serif; background: #121212; color: #eee; margin: 0; display: flex; height: 100vh; }
-        .sidebar { width: 300px; background: #1e1e1e; padding: 20px; border-right: 1px solid #333; }
-        .main { flex: 1; display: flex; flex-direction: column; padding: 20px; }
-        .log-box { flex: 1; background: #000; color: #00ff00; padding: 15px; font-family: monospace; overflow-y: auto; border-radius: 5px; line-height: 1.5; }
-        input { width: 100%; padding: 10px; margin: 10px 0; background: #333; border: 1px solid #444; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #ce1212; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
-        button:hover { background: #ff1e1e; }
+        :root { --main-bg: #0f0f0f; --card-bg: #1a1a1a; --accent: #ce1212; }
+        body { font-family: system-ui; background: var(--main-bg); color: #ddd; margin: 0; display: flex; height: 100vh; }
+        .sidebar { width: 350px; background: #151515; border-right: 1px solid #333; display: flex; flex-direction: column; }
+        .nav-section { padding: 20px; border-bottom: 1px solid #222; }
+        .main-content { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
+        .log-panel { flex: 1; background: #000; color: #00ff41; padding: 15px; font-family: monospace; overflow-y: auto; border-radius: 8px; border: 1px solid #333; }
+        h2 { color: var(--accent); font-size: 18px; }
+        input, select { width: 100%; padding: 8px; margin: 5px 0 15px; background: #222; border: 1px solid #444; color: white; border-radius: 4px; }
+        button { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .tab-content { font-size: 13px; }
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <h2>🕵️ 设置</h2>
-        <label>CD2 Token</label>
-        <input type="password" id="cd2" placeholder="填入 API Token">
-        <label>Emby URL</label>
-        <input type="text" id="emby" placeholder="http://ip:8096">
-        <button onclick="saveConfig()">保存配置</button>
-        <hr style="border-top:1px solid #333; margin: 20px 0;">
-        <button onclick="runTask()" style="background:#0056b3">手动启动抓取</button>
+        <div class="nav-section">
+            <h2>🕵️ 站点配置</h2>
+            <input type="text" id="site_name" placeholder="站点名称 (如: M-Team)">
+            <input type="text" id="site_cookie" placeholder="站点 Cookie">
+            <button onclick="addSite()">➕ 添加站点</button>
+        </div>
+        <div class="nav-section">
+            <h2>📜 订阅规则</h2>
+            <input type="text" id="rule_key" placeholder="搜索关键词 (如: 柯南)">
+            <select id="rule_quality">
+                <option value="1080p">1080p</option>
+                <option value="4K">4K / 2160p</option>
+            </select>
+            <button onclick="addRule()" style="background:#0056b3">💾 添加订阅</button>
+        </div>
+        <div class="nav-section" style="margin-top:auto">
+            <button onclick="runTask()" style="background:#28a745">🚀 立即运行抓取任务</button>
+        </div>
     </div>
-    <div class="main">
-        <h2>实时日志</h2>
-        <div class="log-box" id="logBox">等待系统响应...</div>
+    <div class="main-content">
+        <h2>实时任务控制台</h2>
+        <div class="log-panel" id="logBox">系统启动成功，连接日志流中...<br></div>
     </div>
+
     <script>
         const logBox = document.getElementById('logBox');
         const es = new EventSource('/api/logs');
@@ -38,9 +52,16 @@
             logBox.scrollTop = logBox.scrollHeight;
         };
 
-        function saveConfig() {
-            const data = { cd2_token: document.getElementById('cd2').value, emby_url: document.getElementById('emby').value };
-            fetch('/api/config', { method: 'POST', body: JSON.stringify(data) }).then(() => alert("配置已应用"));
+        async function addSite() {
+            const data = { name: document.getElementById('site_name').value, cookie: document.getElementById('site_cookie').value };
+            await fetch('/api/sites', { method: 'POST', body: JSON.stringify(data) });
+            alert("站点已保存");
+        }
+
+        async function addRule() {
+            const data = { keyword: document.getElementById('rule_key').value, quality: document.getElementById('rule_quality').value };
+            await fetch('/api/rules', { method: 'POST', body: JSON.stringify(data) });
+            alert("订阅规则已添加");
         }
 
         function runTask() {

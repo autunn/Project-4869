@@ -5,20 +5,11 @@ import (
 	"net/http"
 	"project-4869/core"
 	"project-4869/db"
-
 	"github.com/gin-gonic/gin"
-	"github.com/robfig/cron/v3"
 )
 
 func main() {
 	db.InitDB()
-
-	c := cron.New(cron.WithSeconds())
-	c.AddFunc("0 0 * * * *", func() {
-		core.AddLog("系统消息: 定时任务触发")
-		core.RunScraper()
-	})
-	c.Start()
 
 	r := gin.Default()
 	r.Static("/static", "./static")
@@ -28,12 +19,8 @@ func main() {
 		c.HTML(http.StatusOK, "index.html", nil)
 	})
 
-	// 实时日志流 (SSE)
+	// 实时日志
 	r.GET("/api/logs", func(c *gin.Context) {
-		c.Header("Content-Type", "text/event-stream")
-		c.Header("Cache-Control", "no-cache")
-		c.Header("Connection", "keep-alive")
-		
 		ch := core.GetLogChan()
 		c.Stream(func(w io.Writer) bool {
 			if msg, ok := <-ch; ok {
@@ -44,19 +31,24 @@ func main() {
 		})
 	})
 
-	r.POST("/api/config", func(c *gin.Context) {
-		var cfg db.SystemConfig
-		if err := c.ShouldBindJSON(&cfg); err != nil {
-			c.JSON(400, gin.H{"status": "error"})
-			return
-		}
-		db.SaveConfig(cfg)
-		core.AddLog("系统消息: 配置已成功保存")
+	// 站点管理 API
+	r.POST("/api/sites", func(c *gin.Context) {
+		var site db.Site
+		c.BindJSON(&site)
+		db.DB.Create(&site)
+		c.JSON(200, gin.H{"status": "ok"})
+	})
+
+	// 规则管理 API
+	r.POST("/api/rules", func(c *gin.Context) {
+		var rule db.Rule
+		c.BindJSON(&rule)
+		db.DB.Create(&rule)
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
 	r.POST("/api/run", func(c *gin.Context) {
-		go core.RunScraper()
+		go core.ProcessTask()
 		c.JSON(200, gin.H{"message": "任务已启动"})
 	})
 

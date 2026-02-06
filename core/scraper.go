@@ -1,8 +1,15 @@
 package core
 
-import "log"
+import (
+	"log"
+)
 
 func RunScraper() {
-	log.Println("正在启动爬虫任务...")
-	// 这里放置你的 Playwright 或 RSS 抓取逻辑
+	log.Println(">>> 启动自动化任务轮询...")
+	
+	// 1. 运行监控
+	MonitorResources()
+	
+	// 2. 这里可以添加具体的抓取逻辑
+	log.Println(">>> 任务轮询结束")
 }

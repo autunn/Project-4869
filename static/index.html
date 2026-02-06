@@ -2,45 +2,36 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Project 4869 Dashboard</title>
+    <title>Project 4869 Panel</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; margin: 0; display: flex; height: 100vh; }
-        .sidebar { width: 320px; background: #1e1e1e; padding: 25px; border-right: 1px solid #333; box-sizing: border-box; }
-        .content { flex: 1; padding: 25px; display: flex; flex-direction: column; }
-        h2 { color: #ce1212; margin-top: 0; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; text-transform: uppercase; }
-        input { width: 100%; padding: 10px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; }
+        body { font-family: sans-serif; background: #121212; color: #eee; margin: 0; display: flex; height: 100vh; }
+        .sidebar { width: 300px; background: #1e1e1e; padding: 20px; border-right: 1px solid #333; }
+        .main { flex: 1; display: flex; flex-direction: column; padding: 20px; }
+        .log-box { flex: 1; background: #000; color: #00ff00; padding: 15px; font-family: monospace; overflow-y: auto; border-radius: 5px; line-height: 1.5; }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #333; border: 1px solid #444; color: white; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: #ce1212; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
         button:hover { background: #ff1e1e; }
-        .log-box { flex: 1; background: #000; color: #00ff00; padding: 15px; font-family: 'Consolas', monospace; overflow-y: auto; border-radius: 6px; border: 1px solid #333; line-height: 1.5; }
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <h2>🕵️ 设置中心</h2>
-        <div class="form-group">
-            <label>CloudDrive2 Token</label>
-            <input type="password" id="cd2" placeholder="填写 CD2 API Token">
-        </div>
-        <div class="form-group">
-            <label>Emby Server URL</label>
-            <input type="text" id="emby_url" placeholder="http://192.168.x.x:8096">
-        </div>
-        <button onclick="saveConfig()">💾 保存配置</button>
-        <hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
-        <button style="background: #0062cc;" onclick="runTask()">🚀 立即抓取一次</button>
+        <h2>🕵️ 设置</h2>
+        <label>CD2 Token</label>
+        <input type="password" id="cd2" placeholder="填入 API Token">
+        <label>Emby URL</label>
+        <input type="text" id="emby" placeholder="http://ip:8096">
+        <button onclick="saveConfig()">保存配置</button>
+        <hr style="border-top:1px solid #333; margin: 20px 0;">
+        <button onclick="runTask()" style="background:#0056b3">手动启动抓取</button>
     </div>
-    <div class="content">
-        <h2>实时抓取日志</h2>
-        <div class="log-box" id="logBox">正在连接日志流...<br></div>
+    <div class="main">
+        <h2>实时日志</h2>
+        <div class="log-box" id="logBox">等待系统响应...</div>
     </div>
-
     <script>
-        // 实时获取 SSE 日志
         const logBox = document.getElementById('logBox');
-        const eventSource = new EventSource('/api/logs');
-        eventSource.onmessage = function(e) {
+        const es = new EventSource('/api/logs');
+        es.onmessage = (e) => {
             const div = document.createElement('div');
             div.textContent = `[${new Date().toLocaleTimeString()}] ${e.data}`;
             logBox.appendChild(div);
@@ -48,21 +39,12 @@
         };
 
         function saveConfig() {
-            const data = {
-                cd2_token: document.getElementById('cd2').value,
-                emby_url: document.getElementById('emby_url').value
-            };
-            fetch('/api/config', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            }).then(() => alert("配置已应用并存入数据库"));
+            const data = { cd2_token: document.getElementById('cd2').value, emby_url: document.getElementById('emby').value };
+            fetch('/api/config', { method: 'POST', body: JSON.stringify(data) }).then(() => alert("配置已应用"));
         }
 
         function runTask() {
-            fetch('/api/run', {method: 'POST'})
-                .then(res => res.json())
-                .then(data => console.log(data.message));
+            fetch('/api/run', { method: 'POST' });
         }
     </script>
 </body>

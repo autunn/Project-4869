@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"project-4869/core"
 	"project-4869/db"
 	"github.com/gin-gonic/gin"
@@ -12,7 +11,7 @@ import (
 func main() {
 	db.InitDB()
 
-	// 定时任务
+	// 启动定时任务
 	c := cron.New(cron.WithSeconds())
 	c.AddFunc("0 0 * * * *", func() {
 		core.AddLog("系统提示: 触发定时抓取任务")
@@ -28,7 +27,7 @@ func main() {
 		c.HTML(200, "index.html", nil)
 	})
 
-	// 获取实时日志 (Server-Sent Events)
+	// 实时日志流 (SSE)
 	r.GET("/api/logs", func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
@@ -53,14 +52,14 @@ func main() {
 		}
 		db.SaveConfig(config)
 		core.AddLog("系统提示: 配置已更新")
-		c.JSON(200, gin.H{"message": "配置保存成功"})
+		c.JSON(200, gin.H{"message": "保存成功"})
 	})
 
 	r.POST("/api/run", func(c *gin.Context) {
 		go core.RunScraper()
-		c.JSON(200, gin.H{"message": "任务已在后台启动"})
+		c.JSON(200, gin.H{"message": "任务已启动"})
 	})
 
-	log.Println("Project 4869 启动在 http://localhost:4869")
+	log.Println("Project 4869 运行在 http://localhost:4869")
 	r.Run(":4869")
 }

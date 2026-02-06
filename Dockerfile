@@ -1,24 +1,22 @@
 # ----------------------------------------------------
 # 阶段 1: 构建环境 (Builder)
-# 使用标准 Go 镜像 (基于 Debian)，自带完整的 gcc 和 glibc
-# 彻底解决 sqlite3 的 'pread64' 编译报错
+# 【关键修改】升级到 Go 1.23 (基于 Debian Bookworm)
+# 彻底解决 'pread64' 报错 和 'requires go >= 1.23' 报错
 # ----------------------------------------------------
-FROM golang:1.21 AS builder
+FROM golang:1.23 AS builder
 
 WORKDIR /app
-
-# 标准镜像自带 git 和 gcc，无需手动安装
 
 # 1. 复制源码
 COPY . .
 
-# 2. 自动修复 go.mod (防止手动上传时写错)
+# 2. 自动修复 go.mod
 RUN rm -f go.mod go.sum
 RUN go mod init project-4869
 RUN go mod tidy
 
 # 3. 编译
-# CGO_ENABLED=1 开启 C 语言支持 (sqlite 需要)
+# CGO_ENABLED=1 开启 C 语言支持
 # GOOS=linux 编译为 Linux 程序
 RUN CGO_ENABLED=1 GOOS=linux go build -a -o project4869 .
 
@@ -30,19 +28,18 @@ FROM mcr.microsoft.com/playwright:v1.41.0-jammy
 
 WORKDIR /app
 
-# 设置时区为上海
+# 设置时区
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # 从第一阶段复制编译好的程序
 COPY --from=builder /app/project4869 .
-# 复制静态资源 (前端页面)
 COPY static ./static
 
-# 创建数据和日志目录
+# 创建目录
 RUN mkdir -p data logs
 
-# 设置 Playwright 浏览器路径
+# 环境变量
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # 暴露端口

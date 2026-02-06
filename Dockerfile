@@ -1,17 +1,22 @@
 # ----------------------------------------------------
-# 阶段 1: 构建环境
+# 阶段 1: 准备工具链
 # ----------------------------------------------------
+FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 FROM --platform=$BUILDPLATFORM golang:1.23 AS builder
+
+# 复制交叉编译助手工具
+COPY --from=xx / /
 
 WORKDIR /app
 
-# 获取构建的目标架构（由 Buildx 自动注入）
-ARG TARGETOS
-ARG TARGETARCH
+# 获取构建的目标架构
+ARG TARGETPLATFORM
 
-# 安装编译所需的 C 依赖
-# Debian 基础镜像稳定性最高
-RUN apt-get update && apt-get install -y gcc-aarch64-linux-gnu gcc-x86-64-linux-gnu g++-aarch64-linux-gnu g++-x86-64-linux-gnu libc6-dev-arm64-cross
+# 安装编译 SQLite 所需的 C 开发库
+RUN apt-get update && apt-get install -y binutils gcc g++
+
+# 自动安装并配置对应架构的编译器
+RUN xx-apt-get install -y gcc libc6-dev
 
 # 复制源码
 COPY . .
@@ -21,17 +26,13 @@ RUN rm -f go.mod go.sum && \
     go mod init project-4869 && \
     go mod tidy
 
-# 针对不同架构设置不同的 C 编译器 (关键步骤)
-RUN if [ "$TARGETARCH" = "arm64" ]; then \
-        export CC=aarch64-linux-gnu-gcc; \
-    else \
-        export CC=x86_64-linux-gnu-gcc; \
-    fi && \
-    CGO_ENABLED=1 GOOS=$TARGETOS GOARCH=$TARGETARCH \
-    go build -ldflags="-s -w" -o project4869 .
+# 使用 xx-go 进行编译
+# xx-go 会自动处理 CGO_ENABLED=1, GOOS, GOARCH 和对应的 CC 编译器
+RUN xx-go build -ldflags="-s -w" -o project4869 . && \
+    xx-verify project4869
 
 # ----------------------------------------------------
-# 阶段 2: 运行环境
+# 阶段 2: 运行环境 (Playwright)
 # ----------------------------------------------------
 FROM mcr.microsoft.com/playwright:v1.41.0-jammy
 
@@ -41,16 +42,15 @@ WORKDIR /app
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# 复制产物
+# 复制二进制文件和前端文件
 COPY --from=builder /app/project4869 .
 COPY static ./static
 
-# 数据与日志目录
+# 创建必要目录
 RUN mkdir -p data logs
 
-# 设置浏览器路径
+# 环境配置
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-
 EXPOSE 4869
 
 CMD ["./project4869"]

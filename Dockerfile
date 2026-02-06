@@ -1,29 +1,37 @@
 # ----------------------------------------------------
-# 阶段 1: 构建环境 (Builder)
-# 关键点：使用 golang:1.23 (基于 Debian)
-# 1. 解决 'go >= 1.23' 报错
-# 2. 解决 ARM 架构下 sqlite3 'pread64' 报错
+# 阶段 1: 构建环境
 # ----------------------------------------------------
-FROM golang:1.23 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.23 AS builder
 
 WORKDIR /app
 
-# 1. 复制所有源代码
+# 获取构建的目标架构（由 Buildx 自动注入）
+ARG TARGETOS
+ARG TARGETARCH
+
+# 安装编译所需的 C 依赖
+# Debian 基础镜像稳定性最高
+RUN apt-get update && apt-get install -y gcc-aarch64-linux-gnu gcc-x86-64-linux-gnu g++-aarch64-linux-gnu g++-x86-64-linux-gnu libc6-dev-arm64-cross
+
+# 复制源码
 COPY . .
 
-# 2. 强制重新生成 go.mod
-# 防止之前的配置有误
-RUN rm -f go.mod go.sum
-RUN go mod init project-4869
-RUN go mod tidy
+# 初始化并下载依赖
+RUN rm -f go.mod go.sum && \
+    go mod init project-4869 && \
+    go mod tidy
 
-# 3. 编译
-# 这里的 GOARCH 会由 Docker Buildx 自动注入（构建 ARM 时自动为 arm64）
-# 所以我们只需要指定 OS 和 CGO 即可
-RUN CGO_ENABLED=1 GOOS=linux go build -a -o project4869 .
+# 针对不同架构设置不同的 C 编译器 (关键步骤)
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+        export CC=aarch64-linux-gnu-gcc; \
+    else \
+        export CC=x86_64-linux-gnu-gcc; \
+    fi && \
+    CGO_ENABLED=1 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -ldflags="-s -w" -o project4869 .
 
 # ----------------------------------------------------
-# 阶段 2: 运行环境 (Runtime)
+# 阶段 2: 运行环境
 # ----------------------------------------------------
 FROM mcr.microsoft.com/playwright:v1.41.0-jammy
 
@@ -33,18 +41,16 @@ WORKDIR /app
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# 复制编译产物
+# 复制产物
 COPY --from=builder /app/project4869 .
 COPY static ./static
 
-# 创建目录
+# 数据与日志目录
 RUN mkdir -p data logs
 
-# 环境变量
+# 设置浏览器路径
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# 暴露端口
 EXPOSE 4869
 
-# 启动程序
 CMD ["./project4869"]

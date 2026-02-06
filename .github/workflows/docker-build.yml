@@ -29,6 +29,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
+          # 这样写可以自动读取你的 Docker 用户名
           images: ${{ secrets.DOCKER_USERNAME }}/project-4869
           tags: |
             type=ref,event=tag
@@ -42,5 +43,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          # 【彻底解决报错的关键】移除 cache-to，只从本地读取缓存
           cache-from: type=gha
-          cache-to: inline

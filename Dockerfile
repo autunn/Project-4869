@@ -1,28 +1,29 @@
 # ----------------------------------------------------
 # 阶段 1: 构建环境 (Builder)
-# 【关键修改】升级到 Go 1.23 (基于 Debian Bookworm)
-# 彻底解决 'pread64' 报错 和 'requires go >= 1.23' 报错
+# 关键点：使用 golang:1.23 (基于 Debian)
+# 1. 解决 'go >= 1.23' 报错
+# 2. 解决 ARM 架构下 sqlite3 'pread64' 报错
 # ----------------------------------------------------
 FROM golang:1.23 AS builder
 
 WORKDIR /app
 
-# 1. 复制源码
+# 1. 复制所有源代码
 COPY . .
 
-# 2. 自动修复 go.mod
+# 2. 强制重新生成 go.mod
+# 防止之前的配置有误
 RUN rm -f go.mod go.sum
 RUN go mod init project-4869
 RUN go mod tidy
 
 # 3. 编译
-# CGO_ENABLED=1 开启 C 语言支持
-# GOOS=linux 编译为 Linux 程序
+# 这里的 GOARCH 会由 Docker Buildx 自动注入（构建 ARM 时自动为 arm64）
+# 所以我们只需要指定 OS 和 CGO 即可
 RUN CGO_ENABLED=1 GOOS=linux go build -a -o project4869 .
 
 # ----------------------------------------------------
 # 阶段 2: 运行环境 (Runtime)
-# 使用 Playwright 官方镜像 (基于 Ubuntu Jammy)
 # ----------------------------------------------------
 FROM mcr.microsoft.com/playwright:v1.41.0-jammy
 
@@ -32,7 +33,7 @@ WORKDIR /app
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# 从第一阶段复制编译好的程序
+# 复制编译产物
 COPY --from=builder /app/project4869 .
 COPY static ./static
 
